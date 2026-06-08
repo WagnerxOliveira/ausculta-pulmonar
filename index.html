@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Ausculta Digital IA</title>
+    <script src="https://unpkg.com/wavesurfer.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #eef2f5; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .escondido { display: none; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background: #007bff; color: white; cursor: pointer; font-weight: bold; border: none; }
+        button:hover { background: #0056b3; }
+        .btn-gravar { background: #dc3545; }
+        .btn-gravar:hover { background: #c82333; }
+        #grafico { border: 1px solid #ddd; background: #fafafa; border-radius: 4px; margin-top: 10px; }
+        .resultado-box { background: #d4edda; color: #155724; padding: 15px; border-radius: 4px; margin-top: 20px; }
+        .aviso { background: #fff3cd; color: #856404; padding: 10px; font-size: 12px; margin-bottom: 20px; }
+        .drop-zone { border: 2px dashed #007bff; padding: 30px; text-align: center; color: #007bff; cursor: pointer; background: #f8f9fa; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="tela-login">
+    <h2>Sistema de Telemedicina Pulmonar</h2>
+    <select id="perfil-usuario">
+        <option value="medico">Acesso: Médico Pneumologista</option>
+        <option value="enfermeiro">Acesso: Enfermeiro(a) / Triagem</option>
+        <option value="paciente">Acesso: Paciente</option>
+    </select>
+    <button onclick="realizarLogin()">Entrar no Sistema</button>
+</div>
+
+<div class="container escondido" id="dashboard">
+    <button onclick="sair()" style="width: auto; float: right; background: #6c757d;">Sair</button>
+    <h2 id="titulo-perfil">Painel</h2>
+    <div class="aviso">Aviso: Ferramenta de apoio. O parecer final é exclusivo do médico.</div>
+
+    <div id="modulo-cadastro">
+        <h3>Dados do Paciente</h3>
+        <input type="text" id="nome" placeholder="Nome Completo">
+        <select id="sexo">
+            <option value="">Selecione o Sexo</option>
+            <option value="M">Masculino</option>
+            <option value="F">Feminino</option>
+        </select>
+        <input type="number" id="idade" placeholder="Idade">
+        <input type="date" id="nascimento" placeholder="Data de Nascimento">
+        <input type="text" id="cpf" placeholder="CPF (111.111.111-11)" maxlength="14" oninput="formatarCPF(this)">
+    </div>
+
+    <div id="modulo-medico" class="escondido">
+        <h3>Ausculta e IA</h3>
+        
+        <button class="btn-gravar" onclick="gravarAudioFisico()" id="btn-mic">🎙️ Gravar do Estetoscópio (10s)</button>
+        <p id="status"></p>
+
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            Ou clique/arraste um áudio .wav aqui
+            <input type="file" id="file-input" class="escondido" accept="audio/wav" onchange="lidarComArquivo(event)">
+        </div>
+
+        <div id="grafico"></div>
+
+        <button onclick="analisarIA()" id="btn-ia" class="escondido" style="background: #28a745;">🧠 Analisar com Inteligência Artificial</button>
+
+        <div id="laudo-ia" class="resultado-box escondido">
+            <h4 style="margin-top:0;">Resultado do Modelo (Machine Learning)</h4>
+            <p><strong>Paciente:</strong> <span id="res-nome"></span> (CPF: <span id="res-cpf"></span>)</p>
+            <p><strong>Saúde do Pulmão:</strong> <span id="res-diag"></span></p>
+            <p><strong>Acertividade da IA (Confiança):</strong> <span id="res-acc"></span></p>
+        </div>
+    </div>
+
+    <div id="modulo-paciente" class="escondido">
+        <h3>Meus Registros</h3>
+        <p>Consulte seu médico para ver os resultados detalhados dos seus exames respiratórios.</p>
+    </div>
+</div>
+
+<script>
+    // Inicializa o desenhador de ondas sonoras
+    const wavesurfer = WaveSurfer.create({ container: '#grafico', waveColor: '#007bff', progressColor: '#0056b3', height: 80 });
+    let arquivoAtualNoServidor = "";
+
+    // Máscara de CPF (111.111.111-11)
+    function formatarCPF(campo) {
+        let v = campo.value.replace(/\D/g,"");
+        v = v.replace(/(\d{3})(\d)/,"$1.$2");
+        v = v.replace(/(\d{3})(\d)/,"$1.$2");
+        v = v.replace(/(\d{3})(\d{1,2})$/,"$1-$2");
+        campo.value = v;
+    }
+
+    // Controle de Acesso
+    function realizarLogin() {
+        const perfil = document.getElementById('perfil-usuario').value;
+        document.getElementById('tela-login').classList.add('escondido');
+        document.getElementById('dashboard').classList.remove('escondido');
+        
+        document.getElementById('modulo-cadastro').classList.add('escondido');
+        document.getElementById('modulo-medico').classList.add('escondido');
+        document.getElementById('modulo-paciente').classList.add('escondido');
+
+        if (perfil === 'medico') {
+            document.getElementById('titulo-perfil').innerText = "Painel do Médico";
+            document.getElementById('modulo-cadastro').classList.remove('escondido');
+            document.getElementById('modulo-medico').classList.remove('escondido');
+        } else if (perfil === 'enfermeiro') {
+            document.getElementById('titulo-perfil').innerText = "Painel de Enfermagem";
+            document.getElementById('modulo-cadastro').classList.remove('escondido');
+        } else {
+            document.getElementById('titulo-perfil').innerText = "Área do Paciente";
+            document.getElementById('modulo-paciente').classList.remove('escondido');
+        }
+    }
+
+    function sair() {
+        location.reload();
+    }
+
+    // Gravação via Python
+    async function gravarAudioFisico() {
+        document.getElementById('status').innerText = "Aguarde... Captando som do pulmão...";
+        const res = await fetch('http://localhost:5000/api/capturar', { method: 'POST' });
+        const dados = await res.json();
+        
+        if(dados.status === "sucesso") {
+            document.getElementById('status').innerText = "Salvo como: " + dados.arquivo;
+            arquivoAtualNoServidor = dados.arquivo;
+            document.getElementById('btn-ia').classList.remove('escondido');
+            // Como é local, podemos omitir a URL do frontend e o WaveSurfer aguarda análise
+        }
+    }
+
+    // Lida com arquivo arrastado
+    function lidarComArquivo(event) {
+        const file = event.target.files[0];
+        if (file) {
+            arquivoAtualNoServidor = file.name; // Simulação para o MVP
+            document.getElementById('status').innerText = "Arquivo carregado: " + file.name;
+            const reader = new FileReader();
+            reader.onload = function(e) { wavesurfer.load(e.target.result); };
+            reader.readAsDataURL(file);
+            document.getElementById('btn-ia').classList.remove('escondido');
+        }
+    }
+
+    // Análise da Inteligência Artificial
+    async function analisarIA() {
+        const nome = document.getElementById('nome').value || "Não informado";
+        const cpf = document.getElementById('cpf').value || "Não informado";
+        
+        document.getElementById('res-diag').innerText = "Processando redes neurais...";
+        document.getElementById('laudo-ia').classList.remove('escondido');
+
+        const res = await fetch('http://localhost:5000/api/analisar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ arquivo: arquivoAtualNoServidor })
+        });
+        const dados = await res.json();
+
+        document.getElementById('res-nome').innerText = nome;
+        document.getElementById('res-cpf').innerText = cpf;
+        document.getElementById('res-diag').innerText = dados.diagnostico;
+        document.getElementById('res-acc').innerText = dados.precisao;
+    }
+</script>
+</body>
+</html>
