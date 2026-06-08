@@ -1,33 +1,22 @@
-import os
 import librosa
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 import joblib
+import os
 
-print("🧠 [Especialista ML] Iniciando treinamento da Inteligência Artificial...")
+print("🧠 Iniciando o treinamento da IA com os dados pulmonares...")
 
-def extrair_mfcc(caminho_arquivo):
-    """Extrai a assinatura digital do som do pulmão."""
-    audio, sr = librosa.load(caminho_arquivo, sr=22050)
-    mfccs = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=40)
-    return np.mean(mfccs.T, axis=0)
+def extrair_caracteristicas():
+    # Na prática, a IA varreria a pasta do ICBHI 2017 extraída aqui.
+    # Como simulação para gerar o arquivo do cérebro:
+    X_treino = np.random.rand(200, 40) # 200 áudios, 40 características (MFCC)
+    y_treino = np.random.choice([0, 1, 2], 200) # 0: Normal, 1: Sibilo, 2: Estertor
+    return X_treino, y_treino
 
-def treinar_ia():
-    # NOTA: Na prática, você fará um loop na pasta do ICBHI 2017 extraída.
-    # Aqui simulamos a extração para criar o arquivo do modelo e não travar seu PC agora.
-    print("⏳ Lendo arquivos de áudio do dataset e aprendendo padrões...")
-    
-    # Simulação de dados processados do ICBHI (X = áudios, y = diagnósticos)
-    # 0 = Saudável, 1 = Sibilo (Asma/Bronquite), 2 = Estertor (Pneumonia/Secreção)
-    X_treino = np.random.rand(150, 40) 
-    y_treino = np.random.choice([0, 1, 2], 150)
+X, y = extrair_caracteristicas()
 
-    modelo = RandomForestClassifier(n_estimators=100, random_state=42)
-    modelo.fit(X_treino, y_treino)
+modelo = RandomForestClassifier(n_estimators=100, random_state=42)
+modelo.fit(X, y)
 
-    # Salva o "cérebro" treinado
-    joblib.dump(modelo, 'cerebro_pulmao.pkl')
-    print("✅ IA treinada com sucesso! Conhecimento armazenado em 'cerebro_pulmao.pkl'.")
-
-if __name__ == "__main__":
-    treinar_ia()
+joblib.dump(modelo, 'modelo_ia_pulmao.pkl')
+print("✅ Inteligência Artificial treinada e conhecimento salvo em 'modelo_ia_pulmao.pkl'")
